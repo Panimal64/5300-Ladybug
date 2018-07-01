@@ -278,6 +278,7 @@ int main (int argc, char *argv[]) {
 	char* path = argv[1];
 
 	executeSQL sql;
+
 	// Run SQL Parser
 	sql.runExecuteSQL(path);
 
