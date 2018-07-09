@@ -535,33 +535,6 @@ ValueDict* HeapTable::unmarshal(Dbt* data){
     return result;
 }
 
-/*
-ValueDict* HeapTable::unmarshal(Dbt* data){
-     ValueDict *row = new ValueDict();
-     Value temp;
-     u_int16_t  marker = 0;
-     char *marshalled = (char*)data->get_data();
-     for (u16 i = 0; i<this->column_names.size(); i++) {
-         ColumnAttribute attr = this->column_attributes[i];
-         std::string name = this->column_names[i];
-
-         if (attr.get_data_type() == ColumnAttribute::DataType::INT) {
-             memcpy(&temp.n, marshalled+marker, sizeof(temp.n));
-             marker += sizeof(temp.n);
-         } else if (attr.get_data_type() == ColumnAttribute::DataType::TEXT) {
-             u_int16_t stringsize;
-             memcpy(&stringsize, marshalled+marker, sizeof(stringsize));
-             marker += sizeof(stringsize);
-             char* temps = new char[stringsize];
-             memcpy(temps, marshalled+marker, stringsize);
-             marker += stringsize;
-             temp.s = std::string(temps);
-         } else { throw DbRelationError("unsupported type"); }
-         (*row)[name] = temp;
-     }
-    return row;
- }
-*/
 
 // TEST FOR HEAP STORAGE
 bool test_heap_storage(){
@@ -594,13 +567,10 @@ bool test_heap_storage(){
 	ValueDict row;
 	row["a"] = Value(12);
 	row["b"] = Value("Hello!");
-	
-	//std::cout << "TRYING INSERT.............." << std::endl;
+
 	table.insert(&row);
 	std::cout << "insert ok" << std::endl;
 	
-
-    //std::cout << "Trying Select..............." << std::endl;
 	Handles* handles = table.select();
 	std::cout << "select ok " << handles->size() << std::endl;
 	
