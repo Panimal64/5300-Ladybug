@@ -8,7 +8,7 @@
 #include "db_cxx.h"
 #include "heap_storage.h"
 #include "storage_engine.h"
-
+using namespace std;
 
 typedef u_int16_t u16;
 
@@ -435,10 +435,10 @@ ValueDict* HeapTable::validate(const ValueDict* row) {
 Handle HeapTable::append(const ValueDict* row){
 	//add row data to file and check if new blocks are necessary
     Dbt* newData = marshal(row);
-    //std::cout << "NewData Marshalled..." << std::endl;
+    //cout << "NewData Marshalled..." << endl;
 
     SlottedPage* block = this->file.get(this->file.get_last_block_id());
-    //std::cout << "block found..." << std::endl;
+    //cout << "block found..." << endl;
 
     RecordID recordID;
     Handle result;
@@ -554,28 +554,28 @@ bool test_heap_storage(){
 	HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
 	
 	table1.create();
-	std::cout << "create ok" << std::endl;
+	cout << "create ok" << endl;
 	
 	table1.drop();  // drop makes the object unusable because of BerkeleyDB restriction -- maybe want to fix this some day
-	std::cout << "drop ok" << std::endl;
+	cout << "drop ok" << endl;
 	
 	HeapTable table("_test_data_cpp", column_names, column_attributes);
 	
 	table.create_if_not_exists();
-	std::cout << "create_if_not_exsts ok" << std::endl;
+	cout << "create_if_not_exsts ok" << endl;
 	
 	ValueDict row;
 	row["a"] = Value(12);
 	row["b"] = Value("Hello!");
 
 	table.insert(&row);
-	std::cout << "insert ok" << std::endl;
+	cout << "insert ok" << endl;
 	
 	Handles* handles = table.select();
-	std::cout << "select ok " << handles->size() << std::endl;
+	cout << "select ok " << handles->size() << endl;
 	
 	ValueDict *result = table.project((*handles)[0]);
-	std::cout << "project ok" << std::endl;
+	cout << "project ok" << endl;
 	
 	Value value = (*result)["a"];
 	
