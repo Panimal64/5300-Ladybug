@@ -3,8 +3,6 @@
 #include <memory.h>
 #include <vector>
 #include <iostream>
-#include <string>
-#include <cstring>
 #include "db_cxx.h"
 #include "heap_storage.h"
 #include "storage_engine.h"
@@ -16,7 +14,8 @@ typedef u_int16_t u16;
  * SlotPage Functions
  * * * * * * * * * * */
 
-
+//Constructor for slotted page
+//Provided by Professor Lundeen
 SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(block, block_id, is_new) {
     if (is_new) {
         this->num_records = 0;
@@ -29,7 +28,7 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
 
 
 // Add a new record to the block. Return its id.
-// Provided by professor Lundeen
+// Provided by Professor Lundeen
 RecordID SlottedPage::add(const Dbt* data) throw(DbBlockNoRoomError) {
     if (!has_room(data->get_size()))
         throw DbBlockNoRoomError("not enough room for new record");
@@ -441,7 +440,7 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
     return data;
 }
 
-
+//Converts marshaled object back to original object type
 ValueDict* HeapTable::unmarshal(Dbt* data){
     u16 textSize, count = 0, offset = 0, size = data->get_size();
     char block[size];
