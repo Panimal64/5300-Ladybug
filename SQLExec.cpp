@@ -4,6 +4,8 @@
  * @see "Seattle University, CPSC5300, Summer 2018"
  */
 #include "SQLExec.h"
+#inlcude "ParseTreeToString.h"
+#include "schema_tables.h"
 using namespace std;
 using namespace hsql;
 
@@ -47,7 +49,9 @@ QueryResult::~QueryResult() {
 
 
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
-    // FIXME: initialize _tables table, if not yet present
+    if(tables != NULL){
+        SQLExec::tables = new Tables();
+    }
 
     try {
         switch (statement->type()) {
@@ -67,11 +71,30 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
 
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_name,
                                 ColumnAttribute& column_attribute) {
-	throw SQLExecError("not implemented");  // FIXME
+    //set identifier as statement col's name
+    column_name = col->name;
+    //get col's type. set column attribute to match statement col
+    switch(col->type){
+        case ColumnAttribute::INT:
+            column_attribute.set_data_type(ColumnAttribute::INT);
+            break;
+        case ColumnAttribute::TEXT:
+            column_attribute.set_data_type(ColumnAttribute::TEXT);
+            break;
+        default:
+            out << "???";
+    }
+    throw SQLExecError("not implemented");  // FIXME
 }
 
 QueryResult *SQLExec::create(const CreateStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
+//    new table is made
+//    for every column in new table
+//            column_definition(col* statment colum)
+//    add table to db
+//    return table string
+//
+//	return new QueryResult("Not valid create"); // FIXME
 }
 
 // DROP ...
