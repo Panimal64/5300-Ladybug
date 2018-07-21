@@ -46,10 +46,14 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
 QueryResult::~QueryResult() {
 	// FIXME
 }
+QueryResult::~QueryResult(string query) {
+    string message = query;
 
+}
 
+//Executes Query
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
-    if(tables != NULL){
+    if(tables != nullptr){
         SQLExec::tables = new Tables();
     }
 
@@ -69,6 +73,7 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
     }
 }
 
+//get the type of column being described, and store data identifier and attribute back to passed address
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_name,
                                 ColumnAttribute& column_attribute) {
     //set identifier as statement col's name
@@ -87,15 +92,68 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_
     throw SQLExecError("not implemented");  // FIXME
 }
 
+//Creates a table based on input statement
+// REF(https://github.com/hyrise/sql-parser/blob/master/src/sql/CreateStatement.h)
 QueryResult *SQLExec::create(const CreateStatement *statement) {
-//    new table is made
-//    for every column in new table
-//            column_definition(col* statment colum)
-//    add table to db
-//    return table string
-//
-//	return new QueryResult("Not valid create"); // FIXME
+
+    //Variables
+    Identifier tableID;
+    Identifier column_name;
+    ColumnAttribute column_attribute;
+    ColumnNames column_names;
+    ColumnAttributes column_attributes;
+    ValueDict row;
+    std::string message;
+    //get statement info
+    tableID= statement->tableName;
+    for(ColumnDefinition *col: *statement->columns){
+        column_definition(*col,column_name, column_attribute ); //append statment to var
+        column_names.push_back(column_name); //append to list of column names
+        column_attributes.push_back(column_attribute);
+    }
+    //create a row, get handles
+    row["table_name"]= tableID;
+    Handle table_handle = SQLExec::tables->insert(&row);
+
+    //create column handle an
+    try {
+        Handles column_handles;
+        DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
+        try {
+
+            for (uint i = 0; i < column_names.size(); i++) {
+                row["column_name"] = column_names[i];
+                row["data_type"] = Value(column_attributes[i].get_data_type() == ColumnAttribute::INT ? "INT" : "TEXT");
+                column_handles.push_back(columns.insert(&row));
+            }
+
+            // Create Relation
+            DbRelation& table = SQLExec::tables->get_table(table_name);
+            if (statement->ifNotExists)
+                table.create_if_not_exists();
+            else
+                table.create();
+
+        } catch (exception& e) {
+            // attempt to remove from _columns
+            try {
+                for (auto const &handle: column_handles)
+                    columns.del(handle);
+            } catch (...) {}
+            throw;
+        }
+
+    } catch (exception& e) {
+        try {
+            // attempt to remove from _tables
+            SQLExec::tables->del(table_handle);
+        } catch (...) {}
+        throw;
+    }
+    return new QueryResult("Created " + table_name);
 }
+
+
 
 // DROP ...
 QueryResult *SQLExec::drop(const DropStatement *statement) {
