@@ -43,13 +43,20 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
     return out;
 }
 
+//delete if
 QueryResult::~QueryResult() {
-	// FIXME
-}
-QueryResult::~QueryResult(string query) {
-    string message = query;
+    if (column_names != nullptr)
+        delete column_names;
+    if (column_attributes != nullptr)
+        delete column_attributes;
+    if (rows != nullptr) {
+        for (auto row: *rows)
+            delete row;
+        delete rows;
+    }
 
 }
+
 
 //Executes Query
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
@@ -155,20 +162,105 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
 
 
 
-// DROP ...
+//drops table on schema
+//Will delete all columns for table then delete table
 QueryResult *SQLExec::drop(const DropStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
+    if (statement->type != DropStatement::kTable)
+        throw SQLExecError("unrecognized DROP type");
+
+    Identifier tableID = statement->name;
+    if (tableID == Tables::TABLE_NAME || tableID == Columns::TABLE_NAME)
+        throw SQLExecError("cannot drop a schema table");
+
+    ValueDict where;
+    where["table_name"] = Value(table_name);
+
+    // get the table
+    DbRelation& table = SQLExec::tables->get_table(table_name);
+
+    // remove from _columns schema
+    DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
+    Handles* handles = columns.select(&where);
+    for (auto const& handle: *handles)
+        columns.del(handle);
+    delete handles;
+
+    // remove table
+    table.drop();
+
+    // finally, remove from _tables schema
+    SQLExec::tables->del(*SQLExec::tables->select(&where)->begin()); // expect only one row from select
+
+    return new QueryResult(string("dropped ") + table_name);
+
 }
 
+//Query Results based on statement specifications
 QueryResult *SQLExec::show(const ShowStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
+    switch (statement->type) {
+        case ShowStatement::kTables:
+            return show_tables();
+        case ShowStatement::kColumns:
+            return show_columns(statement);
+        case ShowStatement::kIndex:
+        default:
+            throw SQLExecError("unrecognized SHOW type");
+    }
 }
 
+//Statement Query for tables will show tables of a schema
 QueryResult *SQLExec::show_tables() {
-	return new QueryResult("not implemented"); // FIXME
+
+    //Gets columns for a specific table
+    ColumnNames* column_names = new ColumnNames;
+    column_names->push_back("table_name");
+    ColumnAttributes* column_attributes = new ColumnAttributes;
+    column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+    Handles* handles = SQLExec::tables->select();
+    u_long n = handles->size() - 2;
+
+    ValueDicts* rows = new ValueDicts;
+    for (auto const& handle: *handles) {
+        ValueDict* row = SQLExec::tables->project(handle, column_names);
+        Identifier table_name = row->at("table_name").s;
+        if (table_name != Tables::TABLE_NAME && table_name != Columns::TABLE_NAME)
+            rows->push_back(row);
+    }
+    //free memory
+    delete handles;
+    return new QueryResult(column_names, column_attributes, rows,
+                           "successfully returned " + to_string(n) + " rows");
 }
 
+//returns columns of a specified table
 QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
-	return new QueryResult("not implemented"); // FIXME
-}
+    //gets tables
+    DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
 
+    //appends the name, column name, and unit type
+    ColumnNames* column_names = new ColumnNames;
+    column_names->push_back("table_name");
+    column_names->push_back("column_name");
+    column_names->push_back("data_type");
+
+
+    ColumnAttributes* column_attributes = new ColumnAttributes;
+    column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
+
+    //handle will get the specific table being reference in the statement
+    ValueDict where;
+    where["table_name"] = Value(statement->tableName);
+    Handles* handles = columns.select(&where);
+    u_long n = handles->size();
+
+    ValueDicts* rows = new ValueDicts;
+    for (auto const& handle: *handles) {
+        ValueDict* row = columns.project(handle, column_names);
+        rows->push_back(row);
+    }
+    //free memory
+    delete handles;
+    return new QueryResult(column_names, column_attributes, rows,
+                           "successfully returned " + to_string(n) + " rows");
+}
