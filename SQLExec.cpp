@@ -4,7 +4,7 @@
  * @see "Seattle University, CPSC5300, Summer 2018"
  */
 #include "SQLExec.h"
-#inlcude "ParseTreeToString.h"
+#include "ParseTreeToString.h"
 #include "schema_tables.h"
 
 using namespace std;
@@ -44,7 +44,7 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
     return out;
 }
 
-//delete if
+//destructor
 QueryResult::~QueryResult() {
     if (column_names != nullptr)
         delete column_names;
@@ -115,7 +115,7 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
     //get statement info
     tableID= statement->tableName;
     for(ColumnDefinition *col: *statement->columns){
-        column_definition(*col,column_name, column_attribute ); //append statment to var
+        column_definition(col,column_name, column_attribute); //append statment to var
         column_names.push_back(column_name); //append to list of column names
         column_attributes.push_back(column_attribute);
     }
@@ -136,7 +136,7 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
             }
 
             // Create Relation
-            DbRelation& table = SQLExec::tables->get_table(table_name);
+            DbRelation& table = SQLExec::tables->get_table(tableID);
             if (statement->ifNotExists)
                 table.create_if_not_exists();
             else
@@ -158,7 +158,7 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
         } catch (...) {}
         throw;
     }
-    return new QueryResult("Created " + table_name);
+    return new QueryResult("Created " + tableID);
 }
 
 
@@ -174,10 +174,10 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
         throw SQLExecError("cannot drop a schema table");
 
     ValueDict where;
-    where["table_name"] = Value(table_name);
+    where["table_name"] = Value(tableID);
 
     // get the table
-    DbRelation& table = SQLExec::tables->get_table(table_name);
+    DbRelation& table = SQLExec::tables->get_table(tableID);
 
     // remove from _columns schema
     DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
@@ -192,7 +192,7 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
     // finally, remove from _tables schema
     SQLExec::tables->del(*SQLExec::tables->select(&where)->begin()); // expect only one row from select
 
-    return new QueryResult(string("dropped ") + table_name);
+    return new QueryResult(string("dropped ") + tableID);
 
 }
 
