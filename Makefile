@@ -7,7 +7,6 @@ LIB_DIR     = $(COURSE)/lib
 
 # following is a list of all the compiled object files needed to build the sql5300 executable
 OBJS       = sql5300.o heap_storage.o ParseTreeToString.o SQLExec.o schema_tables.o storage_engine.o
-
 # Rule for linking to create the executable
 # Note that this is the default target since it is the first non-generic one in the Makefile: $ make
 # account for header file changes for compilation
