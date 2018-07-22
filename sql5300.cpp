@@ -13,6 +13,9 @@
 #include "SQLParser.h"
 #include "sqlhelper.h"
 #include "heap_storage.h"
+// add for Milestone3
+#include "ParseTreeToString.h"
+#include "SQLExec.h"
 using namespace std;
 using namespace hsql;
 
@@ -22,13 +25,15 @@ using namespace hsql;
 DbEnv* _DB_ENV;
 
 // forward declare
-string operatorExpressionToString(const Expr* expr);
+//string operatorExpressionToString(const Expr* expr);
 
 /**
  * Convert the hyrise Expr AST back into the equivalent SQL
  * @param expr expression to unparse
  * @return     SQL equivalent to *expr
  */
+// use ParseTreeToString::expression to replace
+/*
 string expressionToString(const Expr *expr) {
 	string ret;
 	switch (expr->type) {
@@ -61,12 +66,14 @@ string expressionToString(const Expr *expr) {
 		ret += string(" AS ") + expr->alias;
 	return ret;
 }
-
+*/
 /**
  * Convert the hyrise Expr AST for an operator expression back into the equivalent SQL
  * @param expr operator expression to unparse
  * @return     SQL equivalent to *expr
  */
+// Use ParseTreeToString::operator_expression to replace
+/*
 string operatorExpressionToString(const Expr* expr) {
 	if (expr == NULL)
 		return "null";
@@ -99,12 +106,14 @@ string operatorExpressionToString(const Expr* expr) {
 		ret += " " + expressionToString(expr->expr2);
 	return ret;
 }
-
+*/
 /**
  * Convert the hyrise TableRef AST back into the equivalent SQL
  * @param table  table reference AST to unparse
  * @return       SQL equivalent to *table
  */
+// use ParseTreeToString::table_ref to relace
+/*
 string tableRefInfoToString(const TableRef *table) {
 	string ret;
 	switch (table->type) {
@@ -152,12 +161,14 @@ string tableRefInfoToString(const TableRef *table) {
 	}
 	return ret;
 }
-
+*/
 /**
  * Convert the hyrise ColumnDefinition AST back into the equivalent SQL
  * @param col  column definition to unparse
  * @return     SQL equivalent to *col
  */
+// use ParseTreeToString::column_definition to replace
+/*
 string columnDefinitionToString(const ColumnDefinition *col) {
 	string ret(col->name);
 	switch(col->type) {
@@ -176,12 +187,14 @@ string columnDefinitionToString(const ColumnDefinition *col) {
 	}
 	return ret;
 }
-
+*/
 /**
  * Execute an SQL select statement (but for now, just spit back the SQL)
  * @param stmt  Hyrise AST for the select statement
  * @returns     a string (for now) of the SQL statment
  */
+// use ParseTreeToString::select to replace
+/*
 string executeSelect(const SelectStatement *stmt) {
 	string ret("SELECT ");
 	bool doComma = false;
@@ -196,21 +209,25 @@ string executeSelect(const SelectStatement *stmt) {
 		ret += " WHERE " + expressionToString(stmt->whereClause);
 	return ret;
 }
-
+*/
 /**
  * Execute an SQL insert statement (but for now, just spit back the SQL)
  * @param stmt  Hyrise AST for the insert statement
  * @returns     a string (for now) of the SQL statment
  */
+// use ParseTreeToString::insert to replace
+/*
 string executeInsert(const InsertStatement *stmt) {
 	return "INSERT ...";
 }
-
+*/
 /**
  * Execute an SQL create statement (but for now, just spit back the SQL)
  * @param stmt  Hyrise AST for the create statement
  * @returns     a string (for now) of the SQL statment
  */
+// use ParseTreeToString::create to replace
+/*
 string executeCreate(const CreateStatement *stmt) {
 	string ret("CREATE TABLE ");
 	if (stmt->type != CreateStatement::kTable )
@@ -228,12 +245,14 @@ string executeCreate(const CreateStatement *stmt) {
 	ret += ")";
 	return ret;
 }
-
+*/
 /**
  * Execute an SQL statement (but for now, just spit back the SQL)
  * @param stmt  Hyrise AST for the statement
  * @returns     a string (for now) of the SQL statment
  */
+// use ParseTreeToString::statement to replace
+/*
 string execute(const SQLStatement *stmt) {
 	switch (stmt->type()) {
 	case kStmtSelect:
@@ -246,7 +265,7 @@ string execute(const SQLStatement *stmt) {
 		return "Not implemented";
 	}
 }
-
+*/
 /**
  * Main entry point of the sql5300 program
  * @args dbenvpath  the path to the BerkeleyDB database environment
@@ -271,6 +290,9 @@ int main(int argc, char *argv[]) {
 	}
 	_DB_ENV = &env;
 
+	// init schema tables
+	initialize_schema_tables();
+
 	// Enter the SQL shell loop
 	while (true) {
 		cout << "SQL> ";
@@ -289,13 +311,24 @@ int main(int argc, char *argv[]) {
 		SQLParserResult* result = SQLParser::parseSQLString(query);
 		if (!result->isValid()) {
 			cout << "invalid SQL: " << query << endl;
-			continue;
+			cout << result->errorMsg() << endl;
+			//continue;
+		} else {
+			for (uint i = 0; i < result->size(); ++i) {
+				const SQLStatement *statement = result->getStatement(i);
+				try {
+					// use ParseTreeToString to deal with
+					//cout << execute(result->getStatement(i)) << endl;
+					cout << ParseTreeToString::statement(statement) << endl;
+					QueryResult *qResult = SQLExec::execute(statement);
+					cout << *qResult << endl;
+					delete qResult;
+				} catch (SQLExecError& e) {
+					cout << "Error: " << e.what() << endl;
+				}
+			}
 		}
-
-		// execute the statement
-		for (uint i = 0; i < result->size(); ++i) {
-			cout << execute(result->getStatement(i)) << endl;
-		}
+		delete result;
 	}
 	return EXIT_SUCCESS;
 }

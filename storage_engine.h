@@ -201,6 +201,7 @@ public:
 		INT,
 		TEXT
 	};
+	ColumnAttribute() : data_type(INT) {}
 	ColumnAttribute(DataType data_type) : data_type(data_type) {}
 	virtual ~ColumnAttribute() {}
 
@@ -224,6 +225,9 @@ public:
 	Value() : n(0) {data_type = ColumnAttribute::INT;}
 	Value(int32_t n) : n(n) {data_type = ColumnAttribute::INT;}
 	Value(std::string s) : s(s) {data_type = ColumnAttribute::TEXT; }
+
+	bool operator==(const Value &other) const;
+	bool operator!=(const Value &other) const;
 };
 
 // More type aliases
@@ -233,6 +237,7 @@ typedef std::vector<ColumnAttribute> ColumnAttributes;
 typedef std::pair<BlockID, RecordID> Handle;
 typedef std::vector<Handle> Handles;  // FIXME: will need to turn this into an iterator at some point
 typedef std::map<Identifier, Value> ValueDict;
+typedef std::vector<ValueDict*> ValueDicts;
 
 
 /**
@@ -351,6 +356,15 @@ public:
 	 * @returns             dictionary of values from row (keyed by column_names)
 	 */
 	virtual ValueDict* project(Handle handle, const ColumnNames* column_names) = 0;
+
+	/**
+	 * Return a sequence of values for handle given by column_names (from dictionary) 
+	 * (SELECT <column_names>).
+	 * @param handle        row to get values from
+	 * @param column_names  list of column names to project (taken from keys of dict)
+	 * @returns             dictionary of values from row (keyed by column_names)
+	 */
+	virtual ValueDict* project(Handle handle, const ValueDict* column_names);
 
 protected:
 	Identifier table_name;
