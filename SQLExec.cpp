@@ -95,9 +95,8 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_
             column_attribute.set_data_type(ColumnAttribute::TEXT);
             break;
         default:
-            out << "???";
+            throw SQLExecError("unrecognized data type (column_definition)");
     }
-    throw SQLExecError("not implemented");  // FIXME
 }
 
 //Creates a table based on input statement
@@ -109,7 +108,7 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
     Identifier column_name;
     ColumnAttribute column_attribute;
     ColumnNames column_names;
-    ColumnAttributes column_attributes;
+    ColumnAttributes column_attributes;   
     ValueDict row;
     std::string message;
     //get statement info
