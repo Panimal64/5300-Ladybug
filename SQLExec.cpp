@@ -61,7 +61,7 @@ QueryResult::~QueryResult() {
 
 //Executes Query
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
-    if(tables != nullptr){
+    if(SQLExec::tables == nullptr){
         SQLExec::tables = new Tables();
     }
 
@@ -88,13 +88,13 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_
     column_name = col->name;
     //get col's type. set column attribute to match statement col
     switch(col->type){
-        case ColumnAttribute::INT:
+        case ColumnDefinition::INT:
             column_attribute.set_data_type(ColumnAttribute::INT);
             break;
-        case ColumnAttribute::TEXT:
+        case ColumnDefinition::TEXT:
             column_attribute.set_data_type(ColumnAttribute::TEXT);
             break;
-        default:
+	default:
             throw SQLExecError("unrecognized data type (column_definition)");
     }
 }
