@@ -248,7 +248,7 @@ QueryResult *SQLExec::drop_index(const DropStatement *statement) {
 //    if (tableID == Tables::TABLE_NAME || tableID == Columns::TABLE_NAME)
 //        throw SQLExecError("cannot drop a schema table");
     Identifier tableID = statement->name;
-    Identifier indexID = statement->indexname;   //FIXME need to find variable
+    Identifier indexID = statement->indexName;   //FIXME need to find variable
     ValueDict where;
     where["table_name"] = Value(tableID);
     where["index_name"] = Value(indexID);
