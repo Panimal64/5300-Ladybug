@@ -157,7 +157,7 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
         } catch (...) {}
         throw;
     }
-    return new QueryResult("Created " + tableID);
+    return new QueryResult("created " + tableID);
 }
 
 
