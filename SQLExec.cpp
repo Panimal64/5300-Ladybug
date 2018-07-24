@@ -61,8 +61,7 @@ QueryResult::~QueryResult() {
 
 //Executes Query
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
-    //init table
-    if(SQLExec::tables == nullptr){
+    if(tables != nullptr){
         SQLExec::tables = new Tables();
     }
 
