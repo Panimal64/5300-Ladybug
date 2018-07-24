@@ -32,6 +32,9 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
                     case ColumnAttribute::TEXT:
                         out << "\"" << value.s << "\"";
                         break;
+                    case ColumnAttribute::BOOLEAN:
+						out << (value.n == 0 ? "false" : "true");
+						break;    
                     default:
                         out << "???";
                 }
@@ -58,10 +61,9 @@ QueryResult::~QueryResult() {
 
 }
 
-
 //Executes Query
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
-    if(tables != nullptr){
+    if (SQLExec::tables == nullptr) {
         SQLExec::tables = new Tables();
     }
 
@@ -88,21 +90,34 @@ void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_
     column_name = col->name;
     //get col's type. set column attribute to match statement col
     switch(col->type){
-        case ColumnAttribute::INT:
+        case ColumnDefinition::INT:
             column_attribute.set_data_type(ColumnAttribute::INT);
             break;
-        case ColumnAttribute::TEXT:
+        case ColumnDefinition::TEXT:
             column_attribute.set_data_type(ColumnAttribute::TEXT);
             break;
-        default:
+	default:
             throw SQLExecError("unrecognized data type (column_definition)");
     }
 }
 
 //Creates a table based on input statement
 // REF(https://github.com/hyrise/sql-parser/blob/master/src/sql/CreateStatement.h)
+// QueryResult *SQLExec::create(const CreateStatement *statement) {
+// porting from m4_prep
+// original create method is separated into create_table and create_index methods
 QueryResult *SQLExec::create(const CreateStatement *statement) {
+    switch(statement->type) {
+        case CreateStatement::kTable:
+            return create_table(statement);
+        case CreateStatement::kIndex:
+            return create_index(statement);
+        default:
+            return new QueryResult("Only CREATE TABLE and CREATE INDEX are implemented");
+    }
+}
 
+QueryResult *SQLExec::create_table(const CreateStatement *statement) {
     //Variables
     Identifier tableID;
     Identifier column_name;
@@ -157,14 +172,30 @@ QueryResult *SQLExec::create(const CreateStatement *statement) {
         } catch (...) {}
         throw;
     }
-    return new QueryResult("Created " + tableID);
+    return new QueryResult("created " + tableID);
 }
 
-
+QueryResult *SQLExec::create_index(const CreateStatement *statement) {
+    return new QueryResult("create index not implemented");  // FIXME
+}
 
 //drops table on schema
 //Will delete all columns for table then delete table
+//QueryResult *SQLExec::drop(const DropStatement *statement) {
+// porting from m4_prep
+// original drop method is separated into drop_table and drop_index method     
 QueryResult *SQLExec::drop(const DropStatement *statement) {
+    switch(statement->type) {
+        case DropStatement::kTable:
+            return drop_table(statement);
+        case DropStatement::kIndex:
+            return drop_index(statement);
+        default:
+            return new QueryResult("Only DROP TABLE and CREATE INDEX are implemented");
+    }
+}
+ 
+QueryResult *SQLExec::drop_table(const DropStatement *statement) {    
     if (statement->type != DropStatement::kTable)
         throw SQLExecError("unrecognized DROP type");
 
@@ -177,6 +208,9 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
 
     // get the table
     DbRelation& table = SQLExec::tables->get_table(tableID);
+
+    // do something for drop indices 
+    // (FIXME)
 
     // remove from _columns schema
     DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
@@ -195,6 +229,11 @@ QueryResult *SQLExec::drop(const DropStatement *statement) {
 
 }
 
+QueryResult *SQLExec::drop_index(const DropStatement *statement) {
+    // (FIXME)
+    return new QueryResult("drop index not implemented");  
+}
+
 //Query Results based on statement specifications
 QueryResult *SQLExec::show(const ShowStatement *statement) {
     switch (statement->type) {
@@ -203,9 +242,15 @@ QueryResult *SQLExec::show(const ShowStatement *statement) {
         case ShowStatement::kColumns:
             return show_columns(statement);
         case ShowStatement::kIndex:
+            return show_index(statement);
         default:
             throw SQLExecError("unrecognized SHOW type");
     }
+}
+
+QueryResult *SQLExec::show_index(const ShowStatement *statement) {
+    // (FIXME)
+    return new QueryResult("show index not implemented");  
 }
 
 //Statement Query for tables will show tables of a schema
@@ -243,7 +288,6 @@ QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
     column_names->push_back("table_name");
     column_names->push_back("column_name");
     column_names->push_back("data_type");
-
 
     ColumnAttributes* column_attributes = new ColumnAttributes;
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
