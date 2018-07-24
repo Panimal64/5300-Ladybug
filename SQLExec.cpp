@@ -69,6 +69,7 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
 
     try {
         switch (statement->type()) {
+
             case kStmtCreate:
                 return create((const CreateStatement *) statement);
             case kStmtDrop:
@@ -209,14 +210,24 @@ QueryResult *SQLExec::drop_table(const DropStatement *statement) {
     // get the table
     DbRelation& table = SQLExec::tables->get_table(tableID);
 
-    // do something for drop indices 
-    // (FIXME)
+    // do something for drop indices
+    DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
+    Handles* handles_indices = indices.select(&where);
+    IndexNames indexIDs = get_index_names(tableID); //check professor!!!!!!
+    for (Identifier IndexID: indexIDs) {
+        DbIndex& index = get_index(tableID, IndexID);
+        index.drop();
+    }
+
+    for (auto const& handle: *handles_indices)
+        indices.del(handle);
 
     // remove from _columns schema
     DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);
     Handles* handles = columns.select(&where);
     for (auto const& handle: *handles)
         columns.del(handle);
+    delete handles_indices;
     delete handles;
 
     // remove table
@@ -231,7 +242,36 @@ QueryResult *SQLExec::drop_table(const DropStatement *statement) {
 
 QueryResult *SQLExec::drop_index(const DropStatement *statement) {
     // (FIXME)
-    return new QueryResult("drop index not implemented");  
+    if (statement->type != DropStatement::kIndex)
+        throw SQLExecError("unrecognized DROP type");
+
+//    if (tableID == Tables::TABLE_NAME || tableID == Columns::TABLE_NAME)
+//        throw SQLExecError("cannot drop a schema table");
+    Identifier tableID = statement->name;
+    Identifier indexID = statement->indexname;   //FIXME need to find variable
+    ValueDict where;
+    where["table_name"] = Value(tableID);
+    where["index_name"] = Value(indexID);
+
+    // get the table
+    DbRelation& table = SQLExec::tables->get_table(tableID);
+
+    // do something for drop indices
+    DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
+    Handles* handles_indices = indices.select(&where);
+    IndexNames indexIDs = get_index_names(tableID); //check professor!!!!!!
+    for (Identifier InID: indexIDs) {
+        if(indexID == InID)
+        {
+            DbIndex& index = get_index(tableID, IndexID);
+            index.drop();
+        }
+    }
+    //delete one index
+    indices.del(handle);//check ;
+    delete handles_indices;
+
+    return new QueryResult("drop index " + indexID);
 }
 
 //Query Results based on statement specifications
