@@ -23,8 +23,8 @@ extern DbEnv* _DB_ENV;
 /*
  * Convenient aliases for types
  */
-typedef u_int16_t RecordID;
-typedef u_int32_t BlockID;
+typedef uint16_t RecordID;
+typedef uint32_t BlockID;
 typedef std::vector<RecordID> RecordIDs;
 typedef std::length_error DbBlockNoRoomError;
 
@@ -60,7 +60,7 @@ public:
 	/**
 	 * Reinitialize this block to an empty new block.
 	 */
-	virtual void initialize_new() {}
+	//virtual void initialize_new() {}
 
 	/**
 	 * Add a new record to this block.
@@ -75,7 +75,7 @@ public:
 	 * @param record_id  which record to fetch
 	 * @returns          the data stored for the given record
 	 */
-	virtual Dbt* get(RecordID record_id) = 0;
+	virtual Dbt* get(RecordID record_id) const = 0;
 
 	/**
 	 * Change the data stored for a record in this block.
@@ -96,7 +96,7 @@ public:
 	 * Get all the record ids in this block (excluding deleted ones).
 	 * @returns  pointer to list of record ids (freed by caller)
 	 */ 
-	virtual RecordIDs* ids() = 0;
+	virtual RecordIDs* ids() const = 0;
 
 	/**
 	 * Access the whole block's memory as a BerkeleyDB Dbt pointer.
@@ -185,7 +185,7 @@ public:
 	 * FIXME - not a good long-term approach, but we'll do this until we put in iterators
 	 * @returns  a pointer to vector of BlockIDs (freed by caller)
 	 */ 
-	virtual BlockIDs* block_ids() = 0;
+	virtual BlockIDs* block_ids() const = 0;
 
 protected:
 	std::string name;  // filename (or part of it)
