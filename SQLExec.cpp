@@ -176,8 +176,59 @@ QueryResult *SQLExec::create_table(const CreateStatement *statement) {
     return new QueryResult("created " + tableID);
 }
 
+//Creates an index from a specified statement
+//example : CREATE INDEX index_name ON table_name [USING {BTREE | HASH}] (col1, col2, ...)
 QueryResult *SQLExec::create_index(const CreateStatement *statement) {
-    return new QueryResult("create index not implemented");  // FIXME
+    if (statement->type != CreateStatement::kIndex)
+        throw SQLExecError("unrecognized CREATE type");
+
+    Identifier tableID = statement->tableName;
+    Identifier indexID = statement->indexName;
+    Identifier indType;
+    bool is_unique;
+    IndexNames indNames;
+
+    // get the table
+    DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
+    Handles* handles_indices = indices.select(&row);
+
+    for(char *ind_name: *statement->indexColumns){
+        indNames.push_back(ind_name);
+    }
+
+    try {
+        indType= statement->indexType;
+    }
+    catch(exception& e){
+        indType = 'BTREE';
+    }
+    // true if USING BTREE and false if USING HAS
+    try {
+        is_unique = (statement->indexType == 'BTREE'? true: false);
+    }
+    catch(exception& e){
+        is_unique = false;
+    }
+    //-----
+
+    ValueDict row;
+    row["table_name"] = Value(tableID);
+    row["index_name"] = Value(indexID);
+    row["seq_in_index"] = 0;
+    row["index_type"] = indType;
+    row["is_unique"]= is_unique;
+
+    for(Identifier column: *indNames){
+        row['seq_in_index'] += 1;
+        row['column_name'] = column_name;
+        indices.insert(row);
+    }
+    DbIndex& index = get_index(tableID, indexID);
+    index.create();
+    delete handles_indices;
+    //------
+
+    return new QueryResult("create index "+ indexID);  // FIXME
 }
 
 //drops table on schema
