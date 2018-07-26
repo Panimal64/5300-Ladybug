@@ -190,7 +190,7 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
 
     // get the table
     DbRelation& indices = SQLExec::tables->get_table(Indices::TABLE_NAME);
-    Handles* handles_indices = indices.select(&row);
+    Handle handle_index;
 
     for(char *ind_name: *statement->indexColumns){
         indNames.push_back(ind_name);
@@ -218,10 +218,10 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     row["index_type"] = indType;
     row["is_unique"]= is_unique;
 
-    for(Identifier column: *indNames){
+    for(Identifier column_name: *indNames){
         row['seq_in_index'] += 1;
         row['column_name'] = column_name;
-        indices.insert(row);
+        handle_index.push_back(indices.insert(&row));
     }
     DbIndex& index = get_index(tableID, indexID);
     index.create();
