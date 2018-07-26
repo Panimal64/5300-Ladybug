@@ -225,7 +225,7 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     }
     DbIndex& index = get_index(tableID, indexID);
     index.create();
-    delete handles_indices;
+    delete handle_index;
     //------
 
     return new QueryResult("create index "+ indexID);  // FIXME
