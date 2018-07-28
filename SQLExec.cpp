@@ -12,7 +12,7 @@ using namespace hsql;
 
 // define static data
 Tables* SQLExec::tables = nullptr;
-Indices* SQLExec::indices = nullptr;
+Indices* SQLExec::indices = nullptr; // add this for index implementation
 
 // make query result be printable
 ostream &operator<<(ostream &out, const QueryResult &qres) {
@@ -68,7 +68,7 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
         SQLExec::tables = new Tables();
     }
     if (SQLExec::indices == nullptr)
-        SQLExec::indices = new Indices();
+        SQLExec::indices = new Indices(); // init SQLExec::indices
 
     try {
         switch (statement->type()) {
@@ -191,8 +191,6 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     ValueDict row, where; // row for create index, where for check if the column(s) or table actually exist
     Handles c_handles;
     DbRelation& columns = SQLExec::tables->get_table(Columns::TABLE_NAME);      // get _columns from _tables
-    //DbRelation& indicesTable = SQLExec::tables->get_table(Indices::TABLE_NAME); // get _indices from _tables
-    Indices* indicesTable = SQLExec::indices;
     try {
         for (uint i = 0; i < column_names.size(); i++) {
             row["table_name"] = table_name;
@@ -201,11 +199,7 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
             row["seq_in_index"] = Value(i+1); // start from 1 not 0
             row["index_type"] = Value(string(statement->indexType));
             row["is_unique"] = Value(string(statement->indexType) == "BTREE");
-            //c_handles.push_back(SQLExec::indices->insert(&row));  // keep this until clarification
-            //cout << "indicesTable.insert" << endl;
-            //Handle index_handle = indicesTable.insert(&row);
-            //cout << "BlockID: " << index_handle.first << ", RecordID: " << index_handle.second << endl;
-            c_handles.push_back(indicesTable->insert(&row));         // insert into _indices
+            c_handles.push_back(SQLExec::indices->insert(&row));    // insert into _indices
             // check if the column(s) specified to the index actually exist in the underlying table.
             where["table_name"] = table_name;                       // predicate2 (table name)
             where["column_name"] = column_names[i];                 // predicate1 (column name)
@@ -213,13 +207,12 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
                 throw SQLExecError("Error: there is no " + column_names[i] + " column in " + table_name + " table");
         }
 
-        DbIndex& indice = indicesTable->get_index(table_name,index_name); // currently has problem here for indice.create
+        DbIndex& indice = SQLExec::indices->get_index(table_name,index_name); // currently has problem here for indice.create
         indice.create();                                          //actually create the index
 
     } catch (exception& e) {
         for (auto const &handle: c_handles) {
-            //SQLExec::indices->del(handle);                        // keep this until clarification
-            indicesTable->del(handle);                               // if something wrong, delete all the handles
+            SQLExec::indices->del(handle);                        // if something wrong, delete all the handles
         }
         throw;
     }
@@ -331,10 +324,9 @@ QueryResult *SQLExec::show(const ShowStatement *statement) {
 }
 
 QueryResult *SQLExec::show_index(const ShowStatement *statement) {
-    // (FIXME)
-    //return new QueryResult("show index not implemented");
+    // get _indices from _tables
     DbRelation& indicesTable = SQLExec::tables->get_table(Indices::TABLE_NAME);
-
+    //appends all the columns
     ColumnNames* column_names = new ColumnNames;
     column_names->push_back("table_name");
     column_names->push_back("index_name");
@@ -342,7 +334,7 @@ QueryResult *SQLExec::show_index(const ShowStatement *statement) {
     column_names->push_back("seq_in_index");
     column_names->push_back("index_type");
     column_names->push_back("is_unique");
-
+    //appends all the attributes
     ColumnAttributes* column_attributes = new ColumnAttributes;
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
@@ -350,12 +342,12 @@ QueryResult *SQLExec::show_index(const ShowStatement *statement) {
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::INT));
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::TEXT));
     column_attributes->push_back(ColumnAttribute(ColumnAttribute::BOOLEAN));
-
+    // use select to get all the handles within the specific table
     ValueDict where;
     where["table_name"] = Value(statement->tableName);
     Handles* handles = indicesTable.select(&where);
     u_long n = handles->size();
-
+    // use project to get the specific columns
     ValueDicts* rows = new ValueDicts;
     for (auto const& handle: *handles) {
         ValueDict* row = indicesTable.project(handle, column_names);
