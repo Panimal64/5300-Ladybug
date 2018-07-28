@@ -260,14 +260,15 @@ const Identifier Indices::TABLE_NAME = "_indices";
 std::map<std::pair<Identifier,Identifier>,DbIndex*> Indices::index_cache;
 
 // get the column name for _indices column
+// need to follow the order of fields in Columns::create()
 ColumnNames& Indices::COLUMN_NAMES() {
     static ColumnNames cn;
     if (cn.empty()) {
         cn.push_back("table_name");
         cn.push_back("index_name");
-        cn.push_back("seq_in_index");
         cn.push_back("column_name");
         cn.push_back("index_type");
+        cn.push_back("seq_in_index");
         cn.push_back("is_unique");
     }
     return cn;
@@ -280,11 +281,10 @@ ColumnAttributes& Indices::COLUMN_ATTRIBUTES() {
         ColumnAttribute ca(ColumnAttribute::TEXT);
         cas.push_back(ca);  // table_name
         cas.push_back(ca);  // index_name
-        ca.set_data_type(ColumnAttribute::INT);
-        cas.push_back(ca);  // seq_in_index
-        ca.set_data_type(ColumnAttribute::TEXT);
         cas.push_back(ca);  // column_name
         cas.push_back(ca);  // index_type
+        ca.set_data_type(ColumnAttribute::INT);
+        cas.push_back(ca);  // seq_in_index
         ca.set_data_type(ColumnAttribute::BOOLEAN);
         cas.push_back(ca);  // is_unique
     }
