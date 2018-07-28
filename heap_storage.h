@@ -95,6 +95,7 @@ protected:
 	bool closed;
 	Db db;
 	virtual void db_open(uint flags=0);
+	virtual uint32_t get_block_count();
 };
 
 /**

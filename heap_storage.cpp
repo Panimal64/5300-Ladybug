@@ -194,7 +194,9 @@ HeapFile::HeapFile(string name) : DbFile(name), dbfilename(""), last(0), closed(
 // Create file
 void HeapFile::create(void) {
 	db_open(DB_CREATE | DB_EXCL);
-	get_new();
+	//get_new();
+    SlottedPage *page = get_new(); // force one page to exist
+    delete page;
 }
 
 // Delete file
@@ -262,25 +264,37 @@ BlockIDs* HeapFile::block_ids() const {
     }
     return bid_list;
 }
+uint32_t HeapFile::get_block_count() {
+    DB_BTREE_STAT* stat;
+    this->db.stat(nullptr, &stat, DB_FAST_STAT);
+    return stat->bt_ndata;
+}
 
 // Creates and opens DB
 void HeapFile::db_open(uint flags){
-    DB_BTREE_STAT *stat;
-    if(!closed){
-    	return;
-    }
-    db.set_re_len(DbBlock::BLOCK_SZ);
-    dbfilename = name + ".db";
-    db.open(nullptr, dbfilename.c_str(), nullptr, DB_RECNO, flags, 0644);
-    
-    if(flags == 0){
-    	db.stat(nullptr, &stat, 0);
-    	last = stat->bt_ndata;
-    } else {
-        this->last = 0;
-    }
+//    DB_BTREE_STAT *stat;
+//    if(!closed){
+//    	return;
+//    }
+//    db.set_re_len(DbBlock::BLOCK_SZ);
+//    dbfilename = name + ".db";
+//    db.open(nullptr, dbfilename.c_str(), nullptr, DB_RECNO, flags, 0644);
+//
+//    if(flags == 0){
+//    	db.stat(nullptr, &stat, 0);
+//    	last = stat->bt_ndata;
+//    } else {
+//        this->last = 0;
+//    }
+//    delete stat;
+//    closed = false;
+    if (!this->closed)
+        return;
+    this->db.set_re_len(DbBlock::BLOCK_SZ); // record length - will be ignored if file already exists
+    this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO, flags, 0644);
 
-    closed = false;
+    this->last = flags ? 0 : get_block_count();
+    this->closed = false;
 }
 
 
