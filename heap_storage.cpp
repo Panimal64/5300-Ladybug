@@ -392,6 +392,15 @@ Handles* HeapTable::select(const ValueDict* where) {
     return handles;
 }
 
+// Refine another selection
+// ie if you have nested selections, projections, etc
+Handles* HeapTable::select(Handles *current_selection, const ValueDict* where) {
+    Handles* handles = new Handles();
+    for (auto const& handle: *current_selection)
+        if (selected(handle , where))
+            handles->push_back(handle);
+    return handles;
+}
 
 // Returns all fields of the given handle
 ValueDict* HeapTable::project(Handle handle){
@@ -575,6 +584,29 @@ bool HeapTable::selected(Handle handle, const ValueDict* where) {
 	return *row == *where;
 }
 
+// test functions below::
+void test_set_row(ValueDict &row, int a, string b) {
+    row["a"] = Value(a);
+    row["b"] = Value(b);
+    row["c"] = Value(a%2 == 0);  // true for even, false for odd
+}
+
+bool test_compare(DbRelation &table, Handle handle, int a, string b) {
+    ValueDict *result = table.project(handle);
+    Value value = (*result)["a"];
+    if (value.n != a) {
+        delete result;
+        return false;
+    }
+    value = (*result)["b"];
+    delete result;
+    if (value.s != b)
+        return false;
+    value = (*result)["c"];
+    if (value.n != (a%2 == 0))
+        return false;
+    return true;
+}
 // TEST FOR HEAP STORAGE
 bool test_heap_storage(){
 

@@ -6,7 +6,7 @@
 #include "SQLExec.h"
 #include "ParseTreeToString.h"
 #include "schema_tables.h"
-
+#include <algorithm>
 using namespace std;
 using namespace hsql;
 
@@ -73,13 +73,18 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
     //Check for statement type and pass
     try {
         switch (statement->type()) {
-
             case kStmtCreate:
                 return create((const CreateStatement *) statement);
             case kStmtDrop:
                 return drop((const DropStatement *) statement);
             case kStmtShow:
                 return show((const ShowStatement *) statement);
+            case kStmtInsert:
+                return insert((const InsertStatement *) statement);
+            case kStmtDelete:
+                return del((const DeleteStatement *) statement);
+            case kStmtSelect:
+                return select((const SelectStatement *) statement);
             default:
                 return new QueryResult("not implemented");
         }
@@ -87,6 +92,64 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
         throw SQLExecError(string("DbRelationError: ") + e.what());
     }
 }
+
+QueryResult *SQLExec::insert(const InsertStatement *statement) {
+    Identifier tableID = statement->tableName;
+    DbRelation& table = SQLExec::tables->get_table(tableID);
+    ColumnNames trueNames;
+    ColumnAttributes column_attributes;
+    SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
+    ColumnNames stmtColumns;
+    ValueDict row;
+    if (statement->columns !=NULL) {
+        for (uint i = 0; i < statement->columns->size(); i++) {
+            Identifier column = statement->columns->at(i);
+            if (find(trueNames.begin(), trueNames.end(), column) != trueNames.end()) {                 
+                Expr* expr = statement->values->at(i);
+                switch  (expr->type) {
+                    case kExprLiteralString:
+                        row[column] = Value(string(expr->name));
+                        break;
+                    case kExprLiteralFloat:
+                        row[column] = Value(float(expr->fval));
+                        break;
+                    case kExprLiteralInt:
+                        row[column] = Value(int(expr->ival));
+                        break;
+                    default:
+                        throw SQLExecError("Unrecognized column type");
+                        break;
+                }
+            } else throw SQLExecError("Unrecognized column name");
+    
+        }
+    }
+    
+    //create index on new values
+    ValueDict where;
+    where["table_name"] = Value(statement->tableName);
+    Handles* handles = SQLExec::indices->select(&where);
+    u_long nIndex = handles->size();
+
+    //insert into table
+    Handle handle_t = table.insert(&row);
+    table.close();
+    string returnStatment = string("successfully inserted 1 row into ") + tableID;
+    if (nIndex == 1)
+        returnStatment += string(" and ") + to_string(nIndex) + string(" index");
+    if (nIndex > 1)
+        returnStatment += string(" and ") + to_string(nIndex) + string(" indices");
+    return new QueryResult(returnStatment);
+}
+
+QueryResult *SQLExec::del(const DeleteStatement *statement) {
+    return new QueryResult("DELETE statement not yet implemented");  // FIXME
+}
+
+QueryResult *SQLExec::select(const SelectStatement *statement) {
+    return new QueryResult("SELECT statement not yet implemented");  // FIXME
+}
+
 //COLUMN DEFINITION
 //get the type of column being described, and store data identifier and attribute back to passed address
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_name,
@@ -402,13 +465,13 @@ QueryResult *SQLExec::show_tables() {
 
     //create handle
     Handles* handles = SQLExec::tables->select();
-    u_long n = handles->size() - 2;
+    u_long n = handles->size() - 3;
 
     ValueDicts* rows = new ValueDicts;
     for (auto const& handle: *handles) {
         ValueDict* row = SQLExec::tables->project(handle, column_names);
         Identifier table_name = row->at("table_name").s;
-        if (table_name != Tables::TABLE_NAME && table_name != Columns::TABLE_NAME)
+        if (table_name != Tables::TABLE_NAME && table_name != Columns::TABLE_NAME && table_name != Indices::TABLE_NAME)
             rows->push_back(row);
     }
 

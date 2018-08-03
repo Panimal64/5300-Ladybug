@@ -266,6 +266,8 @@ string execute(const SQLStatement *stmt) {
 	}
 }
 */
+
+
 /**
  * Main entry point of the sql5300 program
  * @args dbenvpath  the path to the BerkeleyDB database environment
@@ -312,6 +314,10 @@ int main(int argc, char *argv[]) {
 		if (!result->isValid()) {
 			cout << "invalid SQL: " << query << endl;
 			cout << result->errorMsg() << endl;
+		}
+		if (query == "test") {
+			cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+			continue;
 			//continue;
 		} else {
 			for (uint i = 0; i < result->size(); ++i) {

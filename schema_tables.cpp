@@ -15,8 +15,8 @@ void initialize_schema_tables() {
     columns.create_if_not_exists();
     columns.close();
     Indices indices;
-	indices.create_if_not_exists();
-	indices.close();
+    indices.create_if_not_exists();
+    indices.close();
 }
 
 // Not terribly useful since the parser weeds most of these out
@@ -84,7 +84,7 @@ void Tables::create() {
     row["table_name"] = Value("_columns");
     insert(&row);
     row["table_name"] = Value("_indices");
-	insert(&row);
+    insert(&row);
 }
 
 // Manually check that table_name is unique.
@@ -210,7 +210,7 @@ void Columns::create() {
     row["column_name"] = Value("data_type");
     insert(&row);
 
-        row["table_name"] = Value("_indices");
+    row["table_name"] = Value("_indices");
     row["column_name"] = Value("table_name");
     insert(&row);
     row["column_name"] = Value("index_name");
@@ -224,7 +224,7 @@ void Columns::create() {
     insert(&row);
     row["column_name"] = Value("is_unique");
     row["data_type"] = Value("BOOLEAN");
-    insert(&row);
+    insert(&row); 
 }
 
 // Manually check that (table_name, column_name) is unique.
@@ -251,6 +251,7 @@ Handle Columns::insert(const ValueDict* row) {
     return HeapTable::insert(row);
 }
 
+
 /*
  * ****************************
  * Indices class implementation
@@ -260,7 +261,6 @@ const Identifier Indices::TABLE_NAME = "_indices";
 std::map<std::pair<Identifier,Identifier>,DbIndex*> Indices::index_cache;
 
 // get the column name for _indices column
-// need to follow the order of fields in Columns::create()
 ColumnNames& Indices::COLUMN_NAMES() {
     static ColumnNames cn;
     if (cn.empty()) {
@@ -281,7 +281,7 @@ ColumnAttributes& Indices::COLUMN_ATTRIBUTES() {
         ColumnAttribute ca(ColumnAttribute::TEXT);
         cas.push_back(ca);  // table_name
         cas.push_back(ca);  // index_name
-        cas.push_back(ca);  // column_name
+        cas.push_back(ca);  //column_name
         cas.push_back(ca);  // index_type
         ca.set_data_type(ColumnAttribute::INT);
         cas.push_back(ca);  // seq_in_index
@@ -411,3 +411,4 @@ IndexNames Indices::get_index_names(Identifier table_name) {
     delete handles;
     return ret;
 }
+
