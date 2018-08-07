@@ -132,7 +132,7 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     u_long nIndex = handles->size();
 
     //insert into table
-    Handle handle_t = table.insert(&row);
+    table.insert(&row);
     table.close();
     string returnStatment = string("successfully inserted 1 row into ") + tableID;
     if (nIndex == 1)

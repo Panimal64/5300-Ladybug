@@ -106,6 +106,24 @@ RecordIDs* SlottedPage::ids(void) const {
     return records;
 }
 
+// Erase all the records
+void SlottedPage::clear() {
+    this->num_records = 0;
+    this->end_free = DbBlock::BLOCK_SZ - 1;
+    put_header();
+}
+ // Count of non-deleted records
+u16 SlottedPage::size() const {
+    u16 size, loc;
+    u16 count = 0;
+    for (RecordID record_id = 1; record_id <= this->num_records; record_id++) {
+        get_header(size, loc, record_id);
+        if (loc != 0)
+            count++;
+    }
+    return count;
+}
+
 // Gets the size and offset for a record.
 // If record id is 0, it is the block header.
 void SlottedPage::get_header(u16 &size, u16 &loc, RecordID id) const {
@@ -127,7 +145,7 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 
 // Determines whether there is room for record.
 bool SlottedPage::has_room(u16 size) const {
-    u16 available = this->end_free - (u16)((this->num_records + 1) * 4);
+    u16 available = this->end_free - (u16)((this->num_records + 2) * 4);
     return size <= available; 
 }
 

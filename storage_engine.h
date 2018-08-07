@@ -92,13 +92,24 @@ public:
 	 */ 
 	virtual RecordIDs* ids() const = 0;
 
+    /**
+     * Delete all the records from this block.
+     */
+    virtual void clear() = 0;
+
+    /**
+     * Get number of active (undeleted) records in this block.
+     * @returns  number of active records
+     */
+    virtual u_int16_t size() const = 0;
+
 	/**
 	 * Access the whole block's memory as a BerkeleyDB Dbt pointer.
 	 * @returns  Dbt used by this block
 	 */ 
 	virtual Dbt* get_block() {return &block;}
 
-	/**
+	/*
 	 * Access the whole block's memory within the BerkeleyDb Dbt.
 	 * @returns  Raw byte stream of this block
 	 */
@@ -223,6 +234,7 @@ public:
 
 	bool operator==(const Value &other) const;
 	bool operator!=(const Value &other) const;
+    bool operator<(const Value &other) const;
 };
 
 // More type aliases
@@ -399,6 +411,14 @@ public:
 	 *                             by column names
 	 */
 	virtual ColumnAttributes* get_column_attributes(const ColumnNames &select_column_names) const;
+
+    /**
+     * Accessor method for table_name
+     * @returns  table_name
+     */
+    virtual Identifier get_table_name() const {
+        return table_name;
+    }
 
 protected:
 	Identifier table_name;

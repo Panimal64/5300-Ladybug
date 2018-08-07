@@ -13,6 +13,25 @@ bool Value::operator!=(const Value &other) const {
     return !(*this == other);
 }
 
+bool Value::operator<(const Value &other) const {
+    if (this->data_type != other.data_type) {
+        // arbitrary ordering of data types: BOOLEAN < INT < TEXT
+        if (this->data_type == ColumnAttribute::BOOLEAN)
+            return true;
+        if (other.data_type == ColumnAttribute::BOOLEAN)
+            return false;
+        if (this->data_type == ColumnAttribute::INT)
+            return true;
+        if (other.data_type == ColumnAttribute::INT)
+            return false;
+        return false; // should never reach this
+    }
+    if (this->data_type == ColumnAttribute::TEXT)
+        return this->s < other.s;
+    return this->n < other.n;
+}
+
+
 // Get only selected column attributes
 ColumnAttributes* DbRelation::get_column_attributes(const ColumnNames &select_column_names) const {
     ColumnAttributes *ret = new ColumnAttributes();

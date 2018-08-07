@@ -43,6 +43,8 @@ public:
 	virtual void put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError);
 	virtual void del(RecordID record_id);
 	virtual RecordIDs* ids(void) const;
+    virtual void clear();
+    virtual u_int16_t size() const;
 
 protected:
 	uint16_t num_records;
