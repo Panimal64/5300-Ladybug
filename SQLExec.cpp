@@ -146,8 +146,66 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     return new QueryResult("DELETE statement not yet implemented");  // FIXME
 }
 
+ValueDict *get_where_conjunction(const Expr *expr)
+{
+    ValueDict *where = new ValueDict();
+    if (expr->opType == Expr::SIMPLE_OP && expr->opChar == '=')
+    {
+        Identifier colname = expr->expr->name;
+        switch (expr->expr2->type)
+        {
+        case kExprLiteralString:
+            (*where)[colname] = Value(expr->expr2->name);
+            break;
+        case kExprLiteralInt:
+            (*where)[colname] = Value(expr->expr2->ival);
+            break;
+        case kExprLiteralFloat:
+            (*where)[colname] = Value(expr->expr2->fval);
+        default:
+            throw DbRelationError("Data type not implemented");
+        }
+    }
+    else if (expr->opType == Expr::AND)
+    {                                                        
+        ValueDict *temp = get_where_conjunction(expr->expr); 
+        where->insert(temp->begin(), temp->end());           
+        temp = get_where_conjunction(expr->expr2);           
+        where->insert(temp->begin(), temp->end());           
+        delete temp;
+    }
+    else
+    {
+        throw DbRelationError("Where clause not supported");
+    }
+    return where;
+}
+
 QueryResult *SQLExec::select(const SelectStatement *statement) {
-    return new QueryResult("SELECT statement not yet implemented");  // FIXME
+    DbRelation& table = SQLExec::tables->get_table(statement->fromTable->name);
+    ColumnNames *column_names = new ColumnNames;
+    ColumnAttributes *column_attributes = new ColumnAttributes;
+    EvalPlan *plan = new EvalPlan(table);
+
+    if (statement->whereClause != nullptr)
+        plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan);
+
+    if (statement->selectList->at(0)->type == kExprStar) {
+        *column_names = table.get_column_names();
+        plan = new EvalPlan(EvalPlan::ProjectAll, plan);
+    } else {
+        for (auto const column: *statement->selectList)
+            column_names->push_back(column->name);
+        plan = new EvalPlan(column_names, plan);
+    }
+
+    EvalPlan *optimized = plan->optimize();
+    ValueDicts *rows = optimized->evaluate();
+    column_attributes = table.get_column_attributes(*column_names);
+
+    std::string message = "Successfully returned " + std::to_string(rows->size()) + " rows.";
+
+    return new QueryResult(column_names, column_attributes, rows, message);
 }
 
 //COLUMN DEFINITION
