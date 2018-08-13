@@ -13,13 +13,13 @@ void initialize_schema_tables() {
     tables.close();
     Columns columns;
     columns.create_if_not_exists();
-    columns.close();
+    columns.close(); 
     Indices indices;
     indices.create_if_not_exists();
-    indices.close();
+    indices.close(); 
 }
 
-// Not terribly useful since the parser weeds most of these out
+//Not terribly useful since the parser weeds most of these out
 bool is_acceptable_identifier(Identifier identifier) {
     if (ParseTreeToString::is_reserved_word(identifier))
         return true;

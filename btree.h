@@ -19,7 +19,7 @@ public:
     virtual void insert(Handle handle);
     virtual void del(Handle handle);
 
-    virtual KeyValue *tkey(const ValueDict *key) const; // pull out the key values from the ValueDict in order
+    virtual KeyValue *tkey(ValueDict const *key) const; // pull out the key values from the ValueDict in order
 
 protected:
     static const BlockID STAT = 1;

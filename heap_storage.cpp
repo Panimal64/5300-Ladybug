@@ -441,7 +441,7 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     ValueDict* res = new ValueDict();
     for(auto const& column_name: *column_names) {
         if(row->find(column_name) == row->end()){
-            throw(DbRelationError("'" + column_name + "'' does not exisit in table.\n"));
+            throw(DbRelationError("'" + column_name + "'' does not exist in table.\n"));
         }
         (*res)[column_name] = (*row)[column_name];
     }

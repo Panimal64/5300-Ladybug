@@ -6,6 +6,7 @@
 #include "SQLExec.h"
 #include "ParseTreeToString.h"
 #include "schema_tables.h"
+#include "EvalPlan.h"
 #include <algorithm>
 using namespace std;
 using namespace hsql;
@@ -99,7 +100,6 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     ColumnNames trueNames;
     ColumnAttributes column_attributes;
     SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
-    ColumnNames stmtColumns;
     ValueDict row;
     if (statement->columns !=NULL) {
         for (uint i = 0; i < statement->columns->size(); i++) {
@@ -124,28 +124,127 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     
         }
     }
-    
-    //create index on new values
-    ValueDict where;
-    where["table_name"] = Value(statement->tableName);
-    Handles* handles = SQLExec::indices->select(&where);
-    u_long nIndex = handles->size();
-
     //insert into table
-    table.insert(&row);
-    table.close();
+    Handle t_insert = table.insert(&row);
+ 
+    //create index on new values
+    IndexNames index_names = SQLExec::indices->get_index_names(tableID);
+    u_long nIndex = index_names.size();
+    for (auto const& index_name: index_names) {
+        DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
+        index.insert(t_insert);  
+    }
+
+    // create print string
     string returnStatment = string("successfully inserted 1 row into ") + tableID;
     if (nIndex == 1)
         returnStatment += string(" and ") + to_string(nIndex) + string(" index");
-    if (nIndex > 1)
+    else
         returnStatment += string(" and ") + to_string(nIndex) + string(" indices");
     return new QueryResult(returnStatment);
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
-    return new QueryResult("DELETE statement not yet implemented");  // FIXME
-}
+    Identifier tableID = statement->tableName;
+    DbRelation& table = SQLExec::tables->get_table(tableID);
+    ColumnNames trueNames;
+    ColumnAttributes column_attributes;
+    SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
+    ValueDict where;
+    Expr *expr = statement->expr;
+    Identifier columnName;
+    while(expr != nullptr) {
+        switch (expr->type) {
+            case kExprOperator:
+                switch(expr->opType) {
+                    case Expr::AND:
+                        break;
+                    case Expr::SIMPLE_OP:
+                        if (expr->opChar != '=')
+                            throw SQLExecError("Ony handles = comparisons, not >< etc...");
+                        columnName = "";
+                        if (expr->expr->table != NULL)
+                            columnName += string(expr->expr->table) + ".";
+                        columnName += string(expr->expr->name);
+                        if (expr->expr2 !=NULL) {
+                            switch (expr->expr2->type) {
+                                case kExprLiteralString:
+                                    where[columnName] = Value(string(expr->expr2->name));
+                                    break;
+                                case kExprLiteralFloat:
+                                    where[columnName] = Value(expr->expr2->fval);
+                                    break;
+                                case kExprLiteralInt:
+                                    where[columnName] = Value(expr->expr2->ival);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        expr = expr->expr;
+                        break;
+                    default:
+                        cout << "Expression opType not handled" << endl;
+                        break;
+                }
+                
+                break;
+            default:
+                throw SQLExecError("Delete statement format not handled yet");
+                break;
+        }
+    expr = expr->expr;
 
+    } 
+    // make eval plan
+    cout << "before Eval" << endl; 
+    EvalPlan* optPlan;
+    EvalPlan* plan = new EvalPlan(table);
+    if (where.size() != 0) {
+        EvalPlan* selectPlan = new EvalPlan(&where, plan);
+        optPlan = selectPlan->optimize();
+    } else
+        optPlan = plan->optimize();
+    
+    //evaluate and get handles from pipeline
+    EvalPipeline result = optPlan->pipeline();
+    cout << "before delete" << endl;
+    delete optPlan;
+    delete plan;
+    cout << "here" << endl;
+    DbRelation *to_delete = result.first;
+    Handles *handles = result.second;
+    u_long nRows = handles->size();
+    
+    //remove from indices
+    IndexNames index_names = SQLExec::indices->get_index_names(tableID);
+    u_long nIndex = index_names.size();
+    for (auto const& index_name: index_names) {
+        DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
+        for (auto const& handle: *handles)
+            index.del(handle);
+    }
+    
+    // remove from table
+    for (auto const& handle: *handles) 
+        to_delete->del(handle);
+ 
+    // create print string
+    string returnStatement;
+    if (nRows == 1)
+        returnStatement = string("successfully deleted 1 row from ") + tableID;
+    else
+        returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
+
+    if (nIndex == 1)
+        returnStatement += string(" and ") + to_string(nIndex) + string(" index");
+    else
+        returnStatement += string(" and ") + to_string(nIndex) + string(" indices");
+   
+     //free memory
+    delete handles; 
+    return new QueryResult(returnStatement);
+}
 QueryResult *SQLExec::select(const SelectStatement *statement) {
     return new QueryResult("SELECT statement not yet implemented");  // FIXME
 }
@@ -292,7 +391,7 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     }
 
     //return query
-    return new QueryResult("create index " + index_name);
+    return new QueryResult("created index " + index_name);
 }
 
 //DROP SWITCH
