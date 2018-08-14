@@ -101,32 +101,32 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     ColumnAttributes column_attributes;
     SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
     ValueDict row;
-    if (statement->columns !=NULL) {
-        for (uint i = 0; i < statement->columns->size(); i++) {
-            Identifier column = statement->columns->at(i);
-            if (find(trueNames.begin(), trueNames.end(), column) != trueNames.end()) {                 
-                Expr* expr = statement->values->at(i);
-                switch  (expr->type) {
-                    case kExprLiteralString:
-                        row[column] = Value(string(expr->name));
-                        break;
-                    case kExprLiteralFloat:
-                        row[column] = Value(float(expr->fval));
-                        break;
-                    case kExprLiteralInt:
-                        row[column] = Value(int(expr->ival));
-                        break;
-                    default:
-                        throw SQLExecError("Unrecognized column type");
-                        break;
-                }
-            } else throw SQLExecError("Unrecognized column name");
-    
+    for (uint i = 0; i < statement->values->size(); i++) {
+        Identifier column;
+        if (statement->columns != NULL)
+            column = statement->columns->at(i);
+        else 
+            column = trueNames.at(i);
+        if (find(trueNames.begin(), trueNames.end(), column) != trueNames.end()) {                 
+            Expr* expr = statement->values->at(i);
+            switch  (expr->type) {
+                case kExprLiteralString:
+                    row[column] = Value(string(expr->name));
+                    break;
+                case kExprLiteralFloat:
+                    row[column] = Value(float(expr->fval));
+                    break;
+                case kExprLiteralInt:
+                    row[column] = Value(int(expr->ival));
+                    break;
+                default:
+                    throw SQLExecError("Unrecognized column type");
+                    break;
+            }
         }
     }
     //insert into table
     Handle t_insert = table.insert(&row);
- 
     //create index on new values
     IndexNames index_names = SQLExec::indices->get_index_names(tableID);
     u_long nIndex = index_names.size();
@@ -144,114 +144,11 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     return new QueryResult(returnStatment);
 }
 
-QueryResult *SQLExec::del(const DeleteStatement *statement) {
-    Identifier tableID = statement->tableName;
-    DbRelation& table = SQLExec::tables->get_table(tableID);
-    ColumnNames trueNames;
-    ColumnAttributes column_attributes;
-    SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
-    ValueDict where;
-    Expr *expr = statement->expr;
-    Identifier columnName;
-    while(expr != nullptr) {
-        switch (expr->type) {
-            case kExprOperator:
-                switch(expr->opType) {
-                    case Expr::AND:
-                        break;
-                    case Expr::SIMPLE_OP:
-                        if (expr->opChar != '=')
-                            throw SQLExecError("Ony handles = comparisons, not >< etc...");
-                        columnName = "";
-                        if (expr->expr->table != NULL)
-                            columnName += string(expr->expr->table) + ".";
-                        columnName += string(expr->expr->name);
-                        if (expr->expr2 !=NULL) {
-                            switch (expr->expr2->type) {
-                                case kExprLiteralString:
-                                    where[columnName] = Value(string(expr->expr2->name));
-                                    break;
-                                case kExprLiteralFloat:
-                                    where[columnName] = Value(expr->expr2->fval);
-                                    break;
-                                case kExprLiteralInt:
-                                    where[columnName] = Value(expr->expr2->ival);
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        expr = expr->expr;
-                        break;
-                    default:
-                        cout << "Expression opType not handled" << endl;
-                        break;
-                }
-                
-                break;
-            default:
-                throw SQLExecError("Delete statement format not handled yet");
-                break;
-        }
-    expr = expr->expr;
-
-    } 
-    // make eval plan
-    cout << "before Eval" << endl; 
-    EvalPlan* optPlan;
-    EvalPlan* plan = new EvalPlan(table);
-    if (where.size() != 0) {
-        EvalPlan* selectPlan = new EvalPlan(&where, plan);
-        optPlan = selectPlan->optimize();
-    } else
-        optPlan = plan->optimize();
-    
-    //evaluate and get handles from pipeline
-    EvalPipeline result = optPlan->pipeline();
-    cout << "before delete" << endl;
-    delete optPlan;
-    delete plan;
-    cout << "here" << endl;
-    DbRelation *to_delete = result.first;
-    Handles *handles = result.second;
-    u_long nRows = handles->size();
-    
-    //remove from indices
-    IndexNames index_names = SQLExec::indices->get_index_names(tableID);
-    u_long nIndex = index_names.size();
-    for (auto const& index_name: index_names) {
-        DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
-        for (auto const& handle: *handles)
-            index.del(handle);
-    }
-    
-    // remove from table
-    for (auto const& handle: *handles) 
-        to_delete->del(handle);
- 
-    // create print string
-    string returnStatement;
-    if (nRows == 1)
-        returnStatement = string("successfully deleted 1 row from ") + tableID;
-    else
-        returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
-
-<<<<<<< HEAD
-    if (nIndex == 1)
-        returnStatement += string(" and ") + to_string(nIndex) + string(" index");
-    else
-        returnStatement += string(" and ") + to_string(nIndex) + string(" indices");
-   
-     //free memory
-    delete handles; 
-    return new QueryResult(returnStatement);
-}
-=======
 ValueDict *get_where_conjunction(const Expr *expr)
 {
     ValueDict *where = new ValueDict();
     if (expr->opType == Expr::SIMPLE_OP && expr->opChar == '=')
-    {
+    {       
         Identifier colname = expr->expr->name;
         switch (expr->expr2->type)
         {
@@ -268,7 +165,7 @@ ValueDict *get_where_conjunction(const Expr *expr)
         }
     }
     else if (expr->opType == Expr::AND)
-    {                                                        
+    {                           
         ValueDict *temp = get_where_conjunction(expr->expr); 
         where->insert(temp->begin(), temp->end());           
         temp = get_where_conjunction(expr->expr2);           
@@ -282,7 +179,72 @@ ValueDict *get_where_conjunction(const Expr *expr)
     return where;
 }
 
->>>>>>> f9d2b0db055460caec0890005924e4aaf6ca79c5
+QueryResult *SQLExec::del(const DeleteStatement *statement) {
+    Identifier tableID = statement->tableName;
+    DbRelation& table = SQLExec::tables->get_table(tableID);
+    ColumnNames trueNames;
+    ColumnAttributes column_attributes;
+    SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
+    Expr* expr = statement->expr;
+    ValueDict* where = nullptr;
+    if (statement->expr != nullptr)
+        where = get_where_conjunction(expr);
+    // make eval plan
+    
+    EvalPlan* plan = new EvalPlan(table);
+    EvalPlan* optPlan;
+    
+    if (where) {
+        EvalPlan selectPlan = EvalPlan(where, plan);
+        optPlan = selectPlan.optimize();
+    } else
+        optPlan = plan->optimize();
+    //evaluate and get handles from pipeline
+    EvalPipeline result = optPlan->pipeline();
+    //delete plan;
+    delete optPlan;
+    DbRelation *to_delete = result.first;
+    Handles *handles = result.second;
+    u_long nRows = handles->size();
+
+// we would delete from the btree index here if we had that functionality yet
+
+    //remove from indices
+    IndexNames index_names = SQLExec::indices->get_index_names(tableID);
+    u_long nIndex = index_names.size();
+/*
+    for (auto const& index_name: index_names) {
+        DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
+        for (auto const& handle: *handles)
+            index.del(handle);
+    }
+*/
+    // remove from table
+    for (auto const& handle: *handles) 
+        to_delete->del(handle);
+ 
+    // create print string
+    string returnStatement;
+    if (nRows == 1)
+        returnStatement = string("successfully deleted 1 row from ") + tableID;
+    else
+        returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
+
+<<<<<<< HEAD
+=======
+//<<<<<<< HEAD
+>>>>>>> 5ca8ab3d7156a6e85718ebc58b4e06f24fbc5c14
+    if (nIndex == 1)
+        returnStatement += string(" and ") + to_string(nIndex) + string(" index");
+    else
+        returnStatement += string(" and ") + to_string(nIndex) + string(" indices");
+   
+     //free memory
+    delete handles; 
+    return new QueryResult(returnStatement);
+}
+
+
 QueryResult *SQLExec::select(const SelectStatement *statement) {
     DbRelation& table = SQLExec::tables->get_table(statement->fromTable->name);
     ColumnNames *column_names = new ColumnNames;
@@ -551,7 +513,7 @@ QueryResult *SQLExec::drop_index(const DropStatement *statement) {
     delete handles_indices;
 
     //return query
-    return new QueryResult("drop index " + indexID);
+    return new QueryResult("dropped index " + indexID);
 
 }
 
@@ -680,4 +642,8 @@ QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
     //return query
     return new QueryResult(column_names, column_attributes, rows,
                            "successfully returned " + to_string(n) + " rows");
+}
+
+bool test_btree() {
+    return true; 
 }

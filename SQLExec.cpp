@@ -230,6 +230,10 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     else
         returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
 
+<<<<<<< HEAD
+=======
+//<<<<<<< HEAD
+>>>>>>> 5ca8ab3d7156a6e85718ebc58b4e06f24fbc5c14
     if (nIndex == 1)
         returnStatement += string(" and ") + to_string(nIndex) + string(" index");
     else
@@ -638,8 +642,4 @@ QueryResult *SQLExec::show_columns(const ShowStatement *statement) {
     //return query
     return new QueryResult(column_names, column_attributes, rows,
                            "successfully returned " + to_string(n) + " rows");
-}
-
-bool test_btree() {
-    return true; 
 }

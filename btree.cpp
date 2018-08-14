@@ -165,3 +165,123 @@ void BTreeIndex::build_key_profile() {
         this->key_profile.push_back(attr.get_data_type());
 }
 
+/**
+ * Helper function for test.
+ */
+bool test_compare(BTreeIndex &index, HeapTable &table, ValueDict *test, ValueDict *compare)
+{
+    ValueDicts* result = new ValueDicts;
+
+    Handles* index_handle = index.lookup(test);
+
+    if (!index_handle->empty()) {
+        for (Handle& i : *index_handle) {
+            result->push_back(table.project(i));
+        }
+    }
+
+    if (result->empty() && compare->empty()) {
+        delete result;
+        return true;
+    }
+
+    if (result->empty() || compare->empty()) {
+        delete result;
+        return true;
+    }
+
+
+    for (ValueDict * result_index : *result)
+    {
+        for (auto const& entry: *compare) {
+            if (entry.second != (*result_index)[entry.first]) {
+                delete result;
+                return false;
+            }
+        }
+    }
+
+    delete result;
+    return true;
+}
+
+/**
+ * 
+*/
+bool test_btree() {
+    ColumnNames column_names;
+    column_names.push_back("a");
+    column_names.push_back("b");
+    ColumnAttributes column_attributes;
+    ColumnAttribute ca(ColumnAttribute::INT);
+    column_attributes.push_back(ca);
+    ca.set_data_type(ColumnAttribute::INT);
+    column_attributes.push_back(ca);
+    
+    HeapTable table("_test_btree_cpp", column_names, column_attributes);
+    table.create();
+
+    // add values
+    ValueDict *row1 = new ValueDict;
+    ValueDict *row2 = new ValueDict;
+    (*row1)["a"] = 12;
+    (*row1)["b"] = 99;
+    (*row2)["a"] = 88;
+    (*row2)["b"] = 101;
+
+    std::cout << "made it to before loop" << std::endl; //TODO
+
+    for (unsigned int i = 0; i < 100; i++)
+    {
+        ValueDict brow;
+        brow["a"] = i + 100;
+        brow["b"] = -i;
+        table.insert(&brow);
+    }
+
+    std::cout << "made it past first for loop" << std::endl; //TODO
+
+    ColumnNames index_column;
+    index_column.push_back(column_names.at(0));
+    BTreeIndex index(table, "test_index", index_column, true);
+    std::cout << "made it to index function" << std::endl; //TODO
+    index.create();
+
+    std::cout << "made it past creating index" << std::endl; //TODO
+
+    ValueDict *test_row = new ValueDict;
+    // Test 1
+    (*test_row)["a"] = 12;
+    if(!test_compare(index, table, test_row, row1))
+        return false;
+
+    std::cout << "made it to test1" << std::endl; //TODO
+
+    // Test 2
+    (*test_row)["a"] = 88;
+    if(!test_compare(index, table, test_row, row2))
+        return false;
+
+    std::cout << "made it to test2" << std::endl; //TODO
+
+    // Test 3
+    (*test_row)["a"] = 6;
+    if (!test_compare(index, table, test_row, row2))
+       return false;
+
+    std::cout << "made it to test3" << std::endl; //TODO
+
+    for (unsigned int j = 0; j < 10; j++) {
+        for (unsigned int i = 0; i < 1000; i++) {
+            (*test_row)["a"] = i + 100;
+            (*test_row)["b"] = -i;
+            if(!test_compare(index, table, test_row, test_row))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+
+

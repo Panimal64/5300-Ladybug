@@ -14,9 +14,9 @@
 #include "sqlhelper.h"
 #include "heap_storage.h"
 // add for Milestone3
+#include "btree.h"
 #include "ParseTreeToString.h"
 #include "SQLExec.h"
-#include "btree.h"
 using namespace std;
 using namespace hsql;
 
@@ -307,15 +307,16 @@ int main(int argc, char *argv[]) {
 			break;  // only way to get out
 		if (query == "test") {
 			cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
-            cout << "test_btree: " << (test_btree() ? "ok" : "failed") << endl;
+			cout << "test_btree: " << (test_btree() ? "ok" : "failed") << endl;
 			continue;
-			//continue;		}
-        }
+		}
+
 		// use the Hyrise sql parser to get us our AST
 		SQLParserResult* result = SQLParser::parseSQLString(query);
 		if (!result->isValid()) {
 			cout << "invalid SQL: " << query << endl;
 			cout << result->errorMsg() << endl;
+            continue;
 		} else {
 			for (uint i = 0; i < result->size(); ++i) {
 				const SQLStatement *statement = result->getStatement(i);
