@@ -237,7 +237,7 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     else
         returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
 
-<<<<<<< HEAD
+//<<<<<<< HEAD
     if (nIndex == 1)
         returnStatement += string(" and ") + to_string(nIndex) + string(" index");
     else

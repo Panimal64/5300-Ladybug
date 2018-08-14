@@ -14,6 +14,7 @@
 #include "sqlhelper.h"
 #include "heap_storage.h"
 // add for Milestone3
+#include "btree.h"
 #include "ParseTreeToString.h"
 #include "SQLExec.h"
 using namespace std;
@@ -306,6 +307,7 @@ int main(int argc, char *argv[]) {
 			break;  // only way to get out
 		if (query == "test") {
 			cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+			cout << "test_btree: " << (test_btree() ? "ok" : "failed") << endl;
 			continue;
 		}
 
