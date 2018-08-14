@@ -145,14 +145,13 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 
 // Determines whether there is room for record.
 bool SlottedPage::has_room(u16 size) const {
-    u16 available = this->end_free - (u16)((this->num_records + 2) * 4);
+    u16 available = this->end_free - (u16)(4*(this->num_records + 2));
     return size <= available; 
 }
 
 // Moves records around within a block to adhere to slotted page format.
 void SlottedPage::slide(u16 start, u16 end){
-    u16 shift = end - start;
-    u16 size, loc;
+    int shift = end - start;
 
     // If there is no shift, do nothing
     if (shift == 0)
@@ -167,15 +166,17 @@ void SlottedPage::slide(u16 start, u16 end){
     memcpy(temp, from, bytes);
     memcpy(to, temp, bytes);
 
-    // Adjust headers.
-    RecordIDs* records = ids();
-    for(RecordIDs::iterator i = records->begin();i!=records->end();i++) {
-        get_header(size,loc, *i);
-        if(loc <= start)
-            put_header(*i,size,loc+shift);
-    }
-    delete records;
-    end_free+=shift;
+    RecordIDs* record_ids = ids();
+	for (auto const& record_id : *record_ids) {
+		u16 size, loc;
+		get_header(size, loc, record_id);
+		if (loc <= start) {
+			loc += shift;
+			put_header(record_id, size, loc);
+		}
+	}
+    delete record_ids;
+    this->end_free += shift;
     put_header();
 }
 
@@ -267,7 +268,7 @@ SlottedPage* HeapFile::get(BlockID block_id) {
 
 // Adds block to specific location
 void HeapFile::put(DbBlock* block){
-    BlockID id = block->get_block_id();
+    int id = block->get_block_id();
     // Create new Dbt structure using the new ID, and the size.
     Dbt key(&id, sizeof(id));
     this->db.put(nullptr,&key,block->get_block(),0);
@@ -277,7 +278,7 @@ void HeapFile::put(DbBlock* block){
 // Returns list of Block IDs
 BlockIDs* HeapFile::block_ids() const {
     BlockIDs* bid_list = new BlockIDs();
-    for(u16 i = 1; i <= (this->last); i++){
+    for(BlockID i = 1; i <= (this->last); i++){
         bid_list -> push_back(i);
     }
     return bid_list;

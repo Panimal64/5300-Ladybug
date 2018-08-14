@@ -358,7 +358,6 @@ void BTreeLeaf::save() {
         this->block->add(dbt);
         delete[] (char *) dbt->get_data();
         delete dbt;
-
         // key
         dbt = marshal_key(&item.first);
         this->block->add(dbt);
@@ -370,7 +369,6 @@ void BTreeLeaf::save() {
     this->block->add(dbt);
     delete[] (char *) dbt->get_data();
     delete dbt;
-
     BTreeNode::save();
 }
 
@@ -379,7 +377,6 @@ Insertion BTreeLeaf::insert(const KeyValue* key, Handle handle) {
     // check unique
     if (this->key_map.find(*key) != this->key_map.end())
         throw DbRelationError("Duplicate keys are not allowed in unique index");
-
     Dbt *dbt;
     dbt = marshal_handle(handle);
     try {
@@ -391,16 +388,14 @@ Insertion BTreeLeaf::insert(const KeyValue* key, Handle handle) {
         this->block->add(dbt);
         delete[] (char *) dbt->get_data();
         delete dbt;
-
         // that worked, so no need to split
         this->key_map[*key] = handle;
-        save();
+        this->save();
         return BTreeNode::insertion_none();
 
     } catch (DbBlockNoRoomError &e) {
         delete[] (char *) dbt->get_data();
         delete dbt;
-
         // too big, so split
 
         // create the sister and put her to the right
