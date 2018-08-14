@@ -29,21 +29,19 @@ BTreeIndex::~BTreeIndex() {
 
 // Create the index.
 void BTreeIndex::create() {
-
 	this->file.create();
     this->stat = new BTreeStat(this->file, this->STAT, this->STAT + 1, this->key_profile);
     this->root = new BTreeLeaf(this->file, this->stat->get_root_id(), this->key_profile, true);
     this->closed = false;
     // build the index
-    Handles* handles = this->relation.select();
     try {
-        for (auto const& handle: *handles)
+        for (auto const& handle: *this->relation.select()) {
             this->insert(handle);
+        }
     }catch (DbRelationError& e) {
         this->file.drop();
         throw;
     }
-    close();
 }
 
 // Drop the index.
@@ -53,6 +51,7 @@ void BTreeIndex::drop() {
 
 // Open existing index. Enables: lookup, range, insert, delete, update.
 void BTreeIndex::open() {
+    
 	if (this->closed) {
         this->file.open();
         this->stat = new BTreeStat(this->file, this->STAT, this->key_profile);
@@ -69,13 +68,15 @@ void BTreeIndex::close() {
 	this->file.close();
     delete stat;
     delete root;
+    stat = nullptr;
+    root = nullptr;
     this->closed = true;
 }
 
 // Find all the rows whose columns are equal to key. Assumes key is a dictionary whose keys are the column
 // names in the index. Returns a list of row handles.
 Handles* BTreeIndex::lookup(ValueDict* key_dict) const {
-	Handles * handles = this->_lookup(this->root, this->stat->get_height(), this->tkey(key_dict));
+	Handles* handles =  this->_lookup(this->root, this->stat->get_height(), this->tkey(key_dict));
     return handles;
 }
 
@@ -102,7 +103,6 @@ Handles* BTreeIndex::range(ValueDict* min_key, ValueDict* max_key) const {
 
 // Insert a row with the given handle. Row must exist in relation already.
 void BTreeIndex::insert(Handle handle) {
-    open();
     ValueDict * row = this->relation.project(handle, &this->key_columns);
     KeyValue *key = this->tkey(row);
     Insertion split_root = this->_insert(this->root, this->stat->get_height(), key, handle);
@@ -118,9 +118,6 @@ void BTreeIndex::insert(Handle handle) {
         delete this->root;
         this->root = newRoot;
     } 
-    close();
-    delete row;
-    delete key;
 }
 
 // recursive function for insert (private)
@@ -149,8 +146,6 @@ void BTreeIndex::del(Handle handle) {
 }
 
 KeyValue *BTreeIndex::tkey(ValueDict const *key) const {
-    if (key == nullptr)
-        return nullptr;
     KeyValue* toReturn = new KeyValue;
     for (Identifier column_name: this->key_columns) {
         toReturn->push_back(key->at(column_name));
@@ -171,9 +166,7 @@ void BTreeIndex::build_key_profile() {
 bool test_compare(BTreeIndex &index, HeapTable &table, ValueDict *test, ValueDict *compare)
 {
     ValueDicts* result = new ValueDicts;
-
     Handles* index_handle = index.lookup(test);
-
     if (!index_handle->empty()) {
         for (Handle& i : *index_handle) {
             result->push_back(table.project(i));
@@ -229,7 +222,6 @@ bool test_btree() {
     (*row2)["a"] = 88;
     (*row2)["b"] = 101;
 
-    std::cout << "made it to before loop" << std::endl; //TODO
 
     for (unsigned int i = 0; i < 100; i++)
     {
@@ -239,15 +231,12 @@ bool test_btree() {
         table.insert(&brow);
     }
 
-    std::cout << "made it past first for loop" << std::endl; //TODO
 
     ColumnNames index_column;
     index_column.push_back(column_names.at(0));
     BTreeIndex index(table, "test_index", index_column, true);
-    std::cout << "made it to index function" << std::endl; //TODO
     index.create();
 
-    std::cout << "made it past creating index" << std::endl; //TODO
 
     ValueDict *test_row = new ValueDict;
     // Test 1
@@ -255,21 +244,18 @@ bool test_btree() {
     if(!test_compare(index, table, test_row, row1))
         return false;
 
-    std::cout << "made it to test1" << std::endl; //TODO
 
     // Test 2
     (*test_row)["a"] = 88;
     if(!test_compare(index, table, test_row, row2))
         return false;
 
-    std::cout << "made it to test2" << std::endl; //TODO
 
     // Test 3
     (*test_row)["a"] = 6;
     if (!test_compare(index, table, test_row, row2))
        return false;
 
-    std::cout << "made it to test3" << std::endl; //TODO
 
     for (unsigned int j = 0; j < 10; j++) {
         for (unsigned int i = 0; i < 1000; i++) {

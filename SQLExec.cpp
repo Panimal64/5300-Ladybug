@@ -132,7 +132,7 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     u_long nIndex = index_names.size();
     for (auto const& index_name: index_names) {
         DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
-        index.insert(t_insert);  
+        index.insert(t_insert);
     }
 
     // create print string
@@ -207,18 +207,21 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     Handles *handles = result.second;
     u_long nRows = handles->size();
 
-// we would delete from the btree index here if we had that functionality yet
 
     //remove from indices
     IndexNames index_names = SQLExec::indices->get_index_names(tableID);
     u_long nIndex = index_names.size();
-/*
+
     for (auto const& index_name: index_names) {
         DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
-        for (auto const& handle: *handles)
-            index.del(handle);
+        for (auto const& handle: *handles) {
+            try { 
+                index.del(handle);
+            //accounts for the fact that del is not implemented yet
+            }catch (DbRelationError& e) {}
+        }
     }
-*/
+
     // remove from table
     for (auto const& handle: *handles) 
         to_delete->del(handle);
@@ -230,10 +233,6 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     else
         returnStatement = string("successfully deleted ") + to_string(nRows) + " rows from " + tableID;
 
-<<<<<<< HEAD
-=======
-//<<<<<<< HEAD
->>>>>>> 5ca8ab3d7156a6e85718ebc58b4e06f24fbc5c14
     if (nIndex == 1)
         returnStatement += string(" and ") + to_string(nIndex) + string(" index");
     else
@@ -266,9 +265,10 @@ QueryResult *SQLExec::select(const SelectStatement *statement) {
     EvalPlan *optimized = plan->optimize();
     ValueDicts *rows = optimized->evaluate();
     column_attributes = table.get_column_attributes(*column_names);
-
+ 
+    delete optimized;
+    
     std::string message = "Successfully returned " + std::to_string(rows->size()) + " rows.";
-
     return new QueryResult(column_names, column_attributes, rows, message);
 }
 
@@ -345,9 +345,9 @@ QueryResult *SQLExec::create_table(const CreateStatement *statement) {
             //check if table exists already
             if (statement->ifNotExists)
                 table.create_if_not_exists();
-            else
+            else {
                 table.create();
-
+            }
         } catch (exception& e) {
             // attempt to remove from _columns
             try {
@@ -374,7 +374,6 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
     //Get statement identifiers
     Identifier table_name = statement->tableName;
     Identifier index_name = statement->indexName;
-
     //get all column names of index statement
     ColumnNames column_names;
     for (auto const& col : *statement->indexColumns)
