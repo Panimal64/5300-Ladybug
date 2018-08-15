@@ -1,10 +1,24 @@
+/* 
+ * @file btree.cpp
+ * Contains definitions for BTreeIndex
+ * A physical implmentation of dbIndex
+ *
+ * @author Jacob Mouser, Greg Deresinski, Kevin Lundeen
+ */
+
 #include "btree.h"
 #include<algorithm>
-#include<iostream>
 #include<map>
 
 using namespace std;   
-
+/* 
+ * BTreeIndex constructor
+ *
+ * @param Relation relation - on which the index is built
+ * @param Identifier name - name of index
+ * @param ColumnNames key columns - name of columns for index
+ * @param bool unique if it is a unique key
+ */
 BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name, ColumnNames key_columns, bool unique)
         : DbIndex(relation, name, key_columns, unique),
           closed(true),
@@ -16,7 +30,9 @@ BTreeIndex::BTreeIndex(DbRelation& relation, Identifier name, ColumnNames key_co
         throw DbRelationError("BTree index must have unique key");
         this->build_key_profile();
 }
-
+/*
+ * destructor for BTreeIndex
+ */
 BTreeIndex::~BTreeIndex() {
     if (this->stat != nullptr)
         delete this->stat;
@@ -27,29 +43,36 @@ BTreeIndex::~BTreeIndex() {
     this->root = nullptr;
 }
 
-// Create the index.
+/*
+ * create the index
+ */
 void BTreeIndex::create() {
 	this->file.create();
     this->stat = new BTreeStat(this->file, this->STAT, this->STAT + 1, this->key_profile);
     this->root = new BTreeLeaf(this->file, this->stat->get_root_id(), this->key_profile, true);
     this->closed = false;
-    // build the index
+    // build the index/ insert already existing rows
     try {
         for (auto const& handle: *this->relation.select()) {
             this->insert(handle);
         }
+    //if create fails, drop what you have done
     }catch (DbRelationError& e) {
         this->file.drop();
         throw;
     }
 }
 
-// Drop the index.
+/* 
+ * Drop the index.
+ */
 void BTreeIndex::drop() {
     this->file.drop();
 }
 
-// Open existing index. Enables: lookup, range, insert, delete, update.
+/*
+ *  Open existing index. Enables: lookup, range, insert, delete, update.
+ */
 void BTreeIndex::open() {
     
 	if (this->closed) {
@@ -63,7 +86,9 @@ void BTreeIndex::open() {
     }
 }
 
-// Closes the index. Disables: lookup, range, insert, delete, update.
+/*
+ *  Closes the index. Disables: lookup, range, insert, delete, update.
+ */
 void BTreeIndex::close() {
 	this->file.close();
     delete stat;
@@ -73,8 +98,13 @@ void BTreeIndex::close() {
     this->closed = true;
 }
 
-// Find all the rows whose columns are equal to key. Assumes key is a dictionary whose keys are the column
-// names in the index. Returns a list of row handles.
+/*
+ * Find all the rows whose columns are equal to key. 
+ * Assumes key is a dictionary whose keys are the column
+ * names in the index. Returns a list of row handles.
+ * @param ValueDict* key_dict - which you are atempting to lookup
+ * @return Handles  to lookup result
+ */
 Handles* BTreeIndex::lookup(ValueDict* key_dict) const {
 	Handles* handles =  this->_lookup(this->root, this->stat->get_height(), this->tkey(key_dict));
     return handles;
@@ -96,17 +126,24 @@ Handles* BTreeIndex::_lookup(BTreeNode *node, uint height, const KeyValue* key) 
     }
 }
 
+/*
+ * for selecting/inserting/deleting over a range
+ * NOT IMPLMENTED
+ */
 Handles* BTreeIndex::range(ValueDict* min_key, ValueDict* max_key) const {
     throw DbRelationError("Don't know how to do a range query on Btree index yet");
     // FIXME
 }
 
-// Insert a row with the given handle. Row must exist in relation already.
+/* 
+ * Insert a row with the given handle. Row must exist in relation already.
+ * @param Handle handle of row to insert
+ */
 void BTreeIndex::insert(Handle handle) {
     ValueDict * row = this->relation.project(handle, &this->key_columns);
     KeyValue *key = this->tkey(row);
     Insertion split_root = this->_insert(this->root, this->stat->get_height(), key, handle);
-//if we split the root, grow the tree up one level
+    //if we split the root, grow the tree up one level
     if (!BTreeNode::insertion_is_none(split_root)) {
         BTreeInterior* newRoot = new BTreeInterior(this->file, 0, this->key_profile, true);
         newRoot->set_first(this->root->get_id());
@@ -120,7 +157,9 @@ void BTreeIndex::insert(Handle handle) {
     } 
 }
 
-// recursive function for insert (private)
+/*
+ *  recursive function for insert (private)
+ */
 Insertion BTreeIndex::_insert(BTreeNode *node, uint height, const KeyValue* key, Handle handle) {
     if (height == 1) {
         BTreeLeaf* leafNode = (BTreeLeaf*)node;
@@ -139,12 +178,15 @@ Insertion BTreeIndex::_insert(BTreeNode *node, uint height, const KeyValue* key,
     }
 }
 
-
+/*
+ * delete a value from the index NOT IMPLMENTED
+ */
 void BTreeIndex::del(Handle handle) {
     throw DbRelationError("Don't know how to delete from a BTree index yet");
 	// FIXME
 }
 
+// private method for extracting key values from a ValueDict
 KeyValue *BTreeIndex::tkey(ValueDict const *key) const {
     KeyValue* toReturn = new KeyValue;
     for (Identifier column_name: this->key_columns) {
@@ -153,6 +195,7 @@ KeyValue *BTreeIndex::tkey(ValueDict const *key) const {
 	return toReturn;
 }
 
+// private method for initializing the key_profile in constructor
 void BTreeIndex::build_key_profile() {
     ColumnAttributes* column_attr = new ColumnAttributes;
     column_attr = this->relation.get_column_attributes(key_columns);
@@ -199,7 +242,8 @@ bool test_compare(BTreeIndex &index, HeapTable &table, ValueDict *test, ValueDic
 }
 
 /**
- * 
+ * tests all functionality of BTreeIndex
+ * @return bool true if passes
 */
 bool test_btree() {
     ColumnNames column_names;

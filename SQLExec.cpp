@@ -1,6 +1,6 @@
 /**
  * @file SQLExec.cpp - implementation of SQLExec class 
- * @author Kevin Lundeen
+ * @author Kevin Lundeen, Jacob Mouser Greg Deresinski
  * @see "Seattle University, CPSC5300, Summer 2018"
  */
 #include "SQLExec.h"
@@ -48,6 +48,7 @@ ostream &operator<<(ostream &out, const QueryResult &qres) {
     out << qres.message;
     return out;
 }
+
 //DESTRUCTOR
 //destroy  a current query result if null
 QueryResult::~QueryResult() {
@@ -62,6 +63,7 @@ QueryResult::~QueryResult() {
     }
 
 }
+
 //EXECUTE
 //Executes Query statement
 QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError) {
@@ -94,6 +96,12 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
     }
 }
 
+/*
+ * INSERT
+ * executes an insert query statment
+ * @param InsertStatment* statment - to execute
+ * @ return a QueryResult* which results from execution
+ */
 QueryResult *SQLExec::insert(const InsertStatement *statement) {
     Identifier tableID = statement->tableName;
     DbRelation& table = SQLExec::tables->get_table(tableID);
@@ -101,6 +109,7 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     ColumnAttributes column_attributes;
     SQLExec::tables->get_columns(tableID, trueNames, column_attributes);
     ValueDict row;
+    //get information from insert statment
     for (uint i = 0; i < statement->values->size(); i++) {
         Identifier column;
         if (statement->columns != NULL)
@@ -131,8 +140,12 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     IndexNames index_names = SQLExec::indices->get_index_names(tableID);
     u_long nIndex = index_names.size();
     for (auto const& index_name: index_names) {
-        DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
-        index.insert(t_insert);
+        try {
+            DbIndex& index = SQLExec::indices->get_index(tableID, index_name);
+            index.insert(t_insert);
+        // since we do not have delete set up, we catch duplication problems here
+        // and do nothing since the index exists
+        } catch (DbRelationError& e) {}
     }
 
     // create print string
@@ -144,6 +157,11 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     return new QueryResult(returnStatment);
 }
 
+/*
+ * parses the where clause of a statment, a helper function for select/delete
+ * @param Expr* expr -of type kOpExpression;
+ * @return ValueDict representation of the expression
+ */
 ValueDict *get_where_conjunction(const Expr *expr)
 {
     ValueDict *where = new ValueDict();
@@ -164,6 +182,7 @@ ValueDict *get_where_conjunction(const Expr *expr)
             throw DbRelationError("Data type not implemented");
         }
     }
+    //AND
     else if (expr->opType == Expr::AND)
     {                           
         ValueDict *temp = get_where_conjunction(expr->expr); 
@@ -172,6 +191,7 @@ ValueDict *get_where_conjunction(const Expr *expr)
         where->insert(temp->begin(), temp->end());           
         delete temp;
     }
+    //something we haven't gotten to yet
     else
     {
         throw DbRelationError("Where clause not supported");
@@ -179,6 +199,12 @@ ValueDict *get_where_conjunction(const Expr *expr)
     return where;
 }
 
+/*
+ * DELETE
+ * Executes a delete statment (from a table/index)
+ * @param DeleteStatment statment - to execute
+ * @return result of attempted delete
+ */
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
     Identifier tableID = statement->tableName;
     DbRelation& table = SQLExec::tables->get_table(tableID);
@@ -243,7 +269,12 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     return new QueryResult(returnStatement);
 }
 
-
+/*
+ * SELECT
+ * Executes select query statements
+ * @param Selectstatment* statment - to execute
+ * @return QueryResult of attempted select
+ */
 QueryResult *SQLExec::select(const SelectStatement *statement) {
     DbRelation& table = SQLExec::tables->get_table(statement->fromTable->name);
     ColumnNames *column_names = new ColumnNames;
